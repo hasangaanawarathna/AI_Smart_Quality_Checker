@@ -4,10 +4,10 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 from src.reports import build_entries_csv, build_summary_pdf
-from src.ui import inject_styles, render_header
+from src.ui import inject_styles, render_empty, render_header
 from src.validators import MAX_FILE_SIZE_MB, read_employee_csv, validate_document
 
-st.set_page_config(page_title="AI Smart Quality Checker", page_icon="✓", layout="wide")
+st.set_page_config(page_title="AI Smart Quality Checker", page_icon="✅", layout="wide", initial_sidebar_state="expanded")
 inject_styles()
 for key in ("documents", "entries", "activities"):
     if key not in st.session_state:
@@ -17,27 +17,28 @@ def activity(action, detail):
     st.session_state.activities.insert(0, {"time": datetime.now().strftime("%Y-%m-%d %H:%M"), "action": action, "detail": detail})
 
 def dashboard():
-    render_header("Dashboard", "A live overview of this browser session")
-    cards = [("Documents uploaded", len(st.session_state.documents), "Stage 1 intake"), ("Employee records", len(st.session_state.entries), "Manual + CSV"), ("Errors detected", "—", "Enabled in Stage 3"), ("Pending review", "—", "Enabled in Stage 3")]
+    render_header("Quality dashboard", "A live overview of this browser session")
+    st.markdown('<div class="hero"><div class="eyebrow">SESSION OVERVIEW</div><h2>Good data starts with a reliable intake.</h2><p>Upload source documents, capture employee-entered values, and keep every item ready for verification in one focused workspace.</p></div>', unsafe_allow_html=True)
+    cards = [("Documents uploaded", len(st.session_state.documents), "Ready for extraction"), ("Employee records", len(st.session_state.entries), "Manual and CSV entries"), ("Errors detected", "—", "Available in Stage 3"), ("Pending review", "—", "Available in Stage 3")]
     for col, (label, value, note) in zip(st.columns(4), cards):
         col.markdown(f'<div class="metric-card"><span>{label}</span><strong>{value}</strong><small>{note}</small></div>', unsafe_allow_html=True)
     left, right = st.columns([1.55, 1], gap="large")
     with left:
-        st.subheader("Recent activity")
+        st.markdown('<div class="section-label">Recent activity</div>', unsafe_allow_html=True)
         if st.session_state.activities:
             st.dataframe(pd.DataFrame(st.session_state.activities[:8]), use_container_width=True, hide_index=True)
         else:
-            st.info("No activity yet. Upload a document or add an employee record to begin.")
+            render_empty("Your activity feed is clear", "Upload a document or add an employee record to begin.")
     with right:
-        st.subheader("Verification pipeline")
+        st.markdown('<div class="section-label">Verification pipeline</div>', unsafe_allow_html=True)
         for number, title, status in [("1", "Document intake", "Available now"), ("2", "OCR extraction", "Stage 2"), ("3", "Field comparison", "Stage 3"), ("4", "Human review", "Stage 3")]:
             st.markdown(f'<div class="pipeline"><b>{number}</b><div><strong>{title}</strong><span>{status}</span></div></div>', unsafe_allow_html=True)
-    st.subheader("Error distribution")
+    st.markdown('<div class="section-label">Error distribution</div>', unsafe_allow_html=True)
     st.info("Error analytics will appear after comparison is introduced in Stage 3. No fabricated values are shown.")
 
 def document_upload():
     render_header("Document Upload", "Securely validate and stage one invoice document")
-    st.markdown(f'<div class="notice">Accepted: PDF, JPG, JPEG, PNG · Maximum size: {MAX_FILE_SIZE_MB} MB · Files remain in this session during Stage 1.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="notice">Accepted: PDF, JPG, JPEG, PNG &nbsp;•&nbsp; Maximum size: {MAX_FILE_SIZE_MB} MB &nbsp;•&nbsp; Files stay in this session.</div>', unsafe_allow_html=True)
     upload = st.file_uploader("Drop an invoice here or browse", type=["pdf", "jpg", "jpeg", "png"], help="Text extraction is added in Stage 2.")
     if upload:
         valid, message = validate_document(upload.name, upload.size, upload.type)
@@ -52,8 +53,10 @@ def document_upload():
                     st.session_state.documents.append({"name": upload.name, "size_kb": round(upload.size / 1024, 1), "type": upload.type, "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M")})
                     activity("Document uploaded", upload.name); st.success(f"{upload.name} was added successfully.")
     if st.session_state.documents:
-        st.subheader("Documents in this session")
+        st.markdown('<div class="section-label">Documents in this session</div>', unsafe_allow_html=True)
         st.dataframe(pd.DataFrame(st.session_state.documents), use_container_width=True, hide_index=True)
+    else:
+        render_empty("No documents added yet", "Validated documents will appear here after upload.")
 
 def employee_data():
     render_header("Employee Data Entry", "Enter invoice data manually or import a CSV file")
@@ -89,12 +92,12 @@ def employee_data():
             except ValueError as error:
                 st.error(str(error))
     if st.session_state.entries:
-        st.subheader("Employee records in this session")
+        st.markdown('<div class="section-label">Employee records in this session</div>', unsafe_allow_html=True)
         st.dataframe(pd.DataFrame(st.session_state.entries), use_container_width=True, hide_index=True)
 
 def verification_results():
     render_header("Quality Verification", "Compare source documents with employee-entered values")
-    st.markdown('<span class="status-pill">Stage 3 · planned</span>', unsafe_allow_html=True)
+    st.markdown('<span class="status-pill">STAGE 3 &nbsp;•&nbsp; PLANNED</span>', unsafe_allow_html=True)
     st.warning("Verification is intentionally not simulated in Stage 1. OCR extraction (Stage 2) must exist before values can responsibly be labelled.")
     rows = [["Match", "Normalized values agree", "Green"], ["Mismatch", "Values clearly differ", "Red"], ["Needs Manual Review", "OCR is uncertain or ambiguous", "Amber"], ["Missing Value", "One source has no value", "Red"]]
     st.dataframe(pd.DataFrame(rows, columns=["Status", "Meaning", "Visual treatment"]), use_container_width=True, hide_index=True)
@@ -111,9 +114,10 @@ def reports():
     st.caption("Verification history and error summaries become available when verification and SQLite are added.")
 
 with st.sidebar:
-    st.markdown('<div class="brand"><div>✓</div><strong>AI Smart<br>Quality Checker</strong></div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand"><div class="brand-mark">Q</div><strong>AI Smart<br>Quality Checker</strong></div>', unsafe_allow_html=True)
     st.caption("Innodata AI Hackathon 2026")
+    st.markdown("<br>", unsafe_allow_html=True)
     page = st.radio("Navigation", ["Dashboard", "Document Upload", "Employee Data", "Quality Verification", "Reports"], label_visibility="collapsed")
-    st.markdown("---"); st.caption("SYSTEM STATUS"); st.success("● Stage 1 ready"); st.caption("Offline-first · No external AI calls")
+    st.markdown("---"); st.caption("SYSTEM STATUS"); st.success("● Stage 1 ready"); st.caption("Offline-first • Session secured")
 
 {"Dashboard": dashboard, "Document Upload": document_upload, "Employee Data": employee_data, "Quality Verification": verification_results, "Reports": reports}[page]()
