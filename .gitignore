@@ -6,3 +6,5 @@ venv/
 .env
 .streamlit/secrets.toml
 *.db
+quality_checker.db
+*.db-journal
