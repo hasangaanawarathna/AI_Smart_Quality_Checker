@@ -1,40 +1,23 @@
 # AI Smart Quality Checker
 
-**Intelligent Document Verification & Error Detection System** — Innodata AI Hackathon 2026
+An explainable invoice quality-control application built with Streamlit, pandas, SQLite, and ReportLab.
 
-මෙය Stage 1 සඳහා සම්පූර්ණයෙන් ක්‍රියාකරන Streamlit interface එකයි. Document intake, employee data entry, CSV import, session dashboard, සහ CSV/PDF intake reports මෙහි ක්‍රියාකරයි. OCR, field comparison, SQLite audit trail සහ AI integration ඊළඟ stages සඳහා වෙන් කර ඇත.
+## What the system does
 
-## Project structure
+- Validates PDF and image intake (type, extension, size, and duplicate filename)
+- Captures employee-entered invoice data manually or from CSV
+- Captures independent source-of-truth values from an invoice
+- Persists records and audit history in SQLite
+- Compares five critical fields using field-specific rules
+- Normalizes invoice numbers, currencies, names, dates, and amounts
+- Produces weighted quality and risk scores
+- Routes mismatches, missing values, and ambiguous names for human review
+- Records approval/rejection decisions with reviewer notes
+- Exports employee records, a PDF intake summary, and a verification audit CSV
 
-```text
-AI_Smart_Quality_Checker/
-├── .streamlit/config.toml
-├── sample_data/
-│   ├── employee_data.csv
-│   └── synthetic_invoice.png
-├── src/{reports.py, ui.py, validators.py}
-├── tests/test_validators.py
-├── app.py
-├── requirements.txt
-└── README.md
-```
+The system does not claim to perform OCR yet. Source values are captured explicitly, and the verification engine is separated behind a stable record contract so an OCR provider can be connected later.
 
-## Stage 1 features
-
-- Modern dark navy/electric blue responsive dashboard
-- PDF/JPG/JPEG/PNG single-document upload සහ 10 MB validation
-- Manual employee invoice form සහ validated CSV import
-- Real session metrics සහ recent activity
-- Working CSV download සහ PDF intake-summary download
-- Fake OCR/verification results නොමැති පැහැදිලි Stage 2/3 boundaries
-- Synthetic sample data සහ automated tests
-- External AI calls නොමැති offline-first design
-
-Stage 1 data browser session memory තුළ පමණක් තබා ගනී. Session එක reset වුවහොත් data නැති වේ. SQLite persistence එක Stage 4 දී එක් කරනු ඇත.
-
-## Windows installation
-
-Python 3.11 හෝ 3.12 install කර **Add Python to PATH** තෝරන්න. ඉන්පසු PowerShell එකෙන්:
+## Run locally
 
 ```powershell
 cd "C:\Users\sanda\OneDrive\Desktop\AI_Smart_Quality_Checker"
@@ -45,39 +28,35 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-PowerShell execution policy error එකක් ලැබුණොත් current terminal එක සඳහා පමණක්:
+Open `http://localhost:8501` if the browser does not open automatically.
 
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-```
+## Typical workflow
 
-සාමාන්‍යයෙන් app එක `http://localhost:8501` වෙත විවෘත වේ. Stop කිරීමට `Ctrl+C` යොදන්න.
+1. Register a document in **Document intake**.
+2. Add the employee record in **Data capture → Employee entry** or import the sample CSV.
+3. Add independently read values in **Data capture → Source capture** using the same invoice number.
+4. Select the invoice in **Quality verification** and run the comparison.
+5. Inspect each field result and save an approval or rejection with a note.
+6. Download audit files from **Reports & audit**.
 
-## Stage 1 test කිරීම
+## Verification rules
+
+| Field | Rule | Weight |
+|---|---|---:|
+| Invoice number | Case and punctuation-insensitive exact match | 25% |
+| Invoice date | Parsed calendar-date equality | 20% |
+| Customer name | Normalized similarity with a review band | 20% |
+| Invoice amount | Decimal comparison with 0.01 tolerance | 25% |
+| Currency | Case-insensitive exact match | 10% |
+
+Any clear mismatch or missing value fails the automated check. Ambiguous but plausible values are marked for review. All outcomes remain reviewable by a human.
+
+## Tests
 
 ```powershell
 pytest -q
 ```
 
-Manual checklist:
+The suite covers file/CSV validation, normalization, mismatch scoring, review routing, SQLite persistence, and reviewer decisions.
 
-1. Dashboard metrics zero ලෙස ආරම්භ වන බව බලන්න.
-2. Document Upload එකෙන් `sample_data/synthetic_invoice.png` add කරන්න.
-3. Manual form එකෙන් required values සහිත employee record එකක් save කරන්න.
-4. CSV tab එකෙන් `sample_data/employee_data.csv` import කරන්න.
-5. Dashboard counts සහ recent activity update වූ බව බලන්න.
-6. Reports page එකෙන් CSV සහ PDF download කර open කරන්න.
-7. Quality Verification page එක fabricated results නොපෙන්වා Stage 3 boundary එක පැහැදිලි කරන බව බලන්න.
-
-## Troubleshooting
-
-- `python`/`py` හඳුනා නොගනී: Python නැවත install කර **Add Python to PATH** enable කරන්න.
-- `streamlit` හඳුනා නොගනී: virtual environment activate කර requirements නැවත install කරන්න.
-- Port 8501 busy නම්: `streamlit run app.py --server.port 8502`
-- CSV error නම්: UTF-8 comma-separated file එකක් සහ required column names භාවිතා කරන්න.
-- UI state reset වුවහොත්: Stage 1 data session memory තුළ පමණක් ඇති බව මතක තබා ගන්න.
-
-## Next stage
-
-Stage 2 දී PyMuPDF සහ Tesseract OCR එක් කර PDF/image text extraction, document preview, field extraction confidence, සහ low-confidence human-review marking ක්‍රියාත්මක කළ යුතුය.
+Runtime data is stored in `quality_checker.db`, which is intentionally excluded from Git.
